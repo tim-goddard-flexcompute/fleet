@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"time"
 
-	eefleetctl "github.com/fleetdm/fleet/v4/ee/fleetctl"
 	"github.com/fleetdm/fleet/v4/server/version"
 	"github.com/urfave/cli/v2"
 )
@@ -91,7 +90,6 @@ func createApp(
 		userCommand(),
 		debugCommand(),
 		previewCommand(),
-		eefleetctl.UpdatesCommand(),
 		hostsCommand(),
 		vulnerabilityDataStreamCommand(),
 		packageCommand(),

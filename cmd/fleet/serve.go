@@ -20,8 +20,6 @@ import (
 
 	"github.com/WatchBeam/clock"
 	"github.com/e-dard/netbug"
-	"github.com/fleetdm/fleet/v4/ee/server/licensing"
-	eeservice "github.com/fleetdm/fleet/v4/ee/server/service"
 	"github.com/fleetdm/fleet/v4/pkg/certificate"
 	"github.com/fleetdm/fleet/v4/pkg/scripts"
 	"github.com/fleetdm/fleet/v4/server"
@@ -108,18 +106,6 @@ the way that the Fleet server works.
 
 			if dev {
 				applyDevFlags(&config)
-			}
-
-			license, err := initLicense(config, devLicense, devExpiredLicense)
-			if err != nil {
-				initFatal(
-					err,
-					"failed to load license - for help use https://fleetdm.com/contact",
-				)
-			}
-
-			if license != nil && license.IsPremium() && license.IsExpired() {
-				fleet.WriteExpiredLicenseBanner(os.Stderr)
 			}
 
 			logger := initLogger(config)
@@ -336,9 +322,6 @@ the way that the Fleet server works.
 
 			ds = cached_mysql.New(ds)
 			var dsOpts []mysqlredis.Option
-			if license.DeviceCount > 0 && config.License.EnforceHostLimit {
-				dsOpts = append(dsOpts, mysqlredis.WithEnforcedHostLimit(license.DeviceCount))
-			}
 			redisWrapperDS := mysqlredis.New(ds, redisPool, dsOpts...)
 			ds = redisWrapperDS
 
@@ -421,7 +404,7 @@ the way that the Fleet server works.
 			}
 
 			var auditLogger fleet.JSONLogger
-			if license.IsPremium() && config.Activity.EnableAuditLog {
+			if config.Activity.EnableAuditLog {
 				// Set specific configuration to audit logs.
 				loggingConfig.Plugin = config.Activity.AuditLogPlugin
 				loggingConfig.Filesystem.LogFile = config.Filesystem.AuditLogFile
@@ -547,10 +530,6 @@ the way that the Fleet server works.
 
 			// validate Apple BM config
 			if config.MDM.IsAppleBMSet() {
-				if !license.IsPremium() {
-					initFatal(errors.New("Apple Business Manager configuration is only available in Fleet Premium"), "validate Apple BM")
-				}
-
 				if len(config.Server.PrivateKey) == 0 {
 					initFatal(errors.New("inserting MDM ABM assets"), "missing required private key. Learn how to configure the private key here: https://fleetdm.com/learn-more-about/fleet-server-private-key")
 				}
@@ -691,51 +670,6 @@ the way that the Fleet server works.
 			}
 
 			var softwareInstallStore fleet.SoftwareInstallerStore
-			if license.IsPremium() {
-				profileMatcher := apple_mdm.NewProfileMatcher(redisPool)
-				if config.S3.SoftwareInstallersBucket != "" {
-					if config.S3.BucketsAndPrefixesMatch() {
-						level.Warn(logger).Log("msg", "the S3 buckets and prefixes for carves and software installers appear to be identical, this can cause issues")
-					}
-					store, err := s3.NewSoftwareInstallerStore(config.S3)
-					if err != nil {
-						initFatal(err, "initializing S3 software installer store")
-					}
-					softwareInstallStore = store
-					level.Info(logger).Log("msg", "using S3 software installer store", "bucket", config.S3.SoftwareInstallersBucket)
-				} else {
-					installerDir := os.TempDir()
-					if dir := os.Getenv("FLEET_SOFTWARE_INSTALLER_STORE_DIR"); dir != "" {
-						installerDir = dir
-					}
-					store, err := filesystem.NewSoftwareInstallerStore(installerDir)
-					if err != nil {
-						level.Error(logger).Log("err", err, "msg", "failed to configure local filesystem software installer store")
-						softwareInstallStore = fleet.FailingSoftwareInstallerStore{}
-					} else {
-						softwareInstallStore = store
-						level.Info(logger).Log("msg", "using local filesystem software installer store, this is not suitable for production use", "directory", installerDir)
-					}
-				}
-
-				svc, err = eeservice.NewService(
-					svc,
-					ds,
-					logger,
-					config,
-					mailService,
-					clock.C,
-					depStorage,
-					apple_mdm.NewMDMAppleCommander(mdmStorage, mdmPushService),
-					ssoSessionStore,
-					profileMatcher,
-					softwareInstallStore,
-				)
-				if err != nil {
-					initFatal(err, "initial Fleet Premium service")
-				}
-			}
-
 			instanceID, err := server.GenerateRandomText(64)
 			if err != nil {
 				initFatal(errors.New("Error generating random instance identifier"), "")
@@ -1178,17 +1112,6 @@ the way that the Fleet server works.
 	serveCmd.PersistentFlags().BoolVar(&devExpiredLicense, "dev_expired_license", false, "Enable expired development license")
 
 	return serveCmd
-}
-
-func initLicense(config configpkg.FleetConfig, devLicense, devExpiredLicense bool) (*fleet.LicenseInfo, error) {
-	if devLicense {
-		// This license key is valid for development only
-		config.License.Key = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJGbGVldCBEZXZpY2UgTWFuYWdlbWVudCBJbmMuIiwiZXhwIjoxNzUxMjQxNjAwLCJzdWIiOiJkZXZlbG9wbWVudC1vbmx5IiwiZGV2aWNlcyI6MTAwLCJub3RlIjoiZm9yIGRldmVsb3BtZW50IG9ubHkiLCJ0aWVyIjoicHJlbWl1bSIsImlhdCI6MTY1NjY5NDA4N30.dvfterOvfTGdrsyeWYH9_lPnyovxggM5B7tkSl1q1qgFYk_GgOIxbaqIZ6gJlL0cQuBF9nt5NgV0AUT9RmZUaA"
-	} else if devExpiredLicense {
-		// An expired license key
-		config.License.Key = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJGbGVldCBEZXZpY2UgTWFuYWdlbWVudCBJbmMuIiwiZXhwIjoxNjI5NzYzMjAwLCJzdWIiOiJEZXYgbGljZW5zZSAoZXhwaXJlZCkiLCJkZXZpY2VzIjo1MDAwMDAsIm5vdGUiOiJUaGlzIGxpY2Vuc2UgaXMgdXNlZCB0byBmb3IgZGV2ZWxvcG1lbnQgcHVycG9zZXMuIiwidGllciI6ImJhc2ljIiwiaWF0IjoxNjI5OTA0NzMyfQ.AOppRkl1Mlc_dYKH9zwRqaTcL0_bQzs7RM3WSmxd3PeCH9CxJREfXma8gm0Iand6uIWw8gHq5Dn0Ivtv80xKvQ"
-	}
-	return licensing.LoadLicense(config.License.Key)
 }
 
 // basicAuthHandler wraps the given handler behind HTTP Basic Auth.

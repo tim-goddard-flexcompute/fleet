@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	eefleetctl "github.com/fleetdm/fleet/v4/ee/fleetctl"
 	"github.com/fleetdm/fleet/v4/orbit/pkg/packaging"
 	"github.com/fleetdm/fleet/v4/pkg/filepath_windows"
 	"github.com/fleetdm/fleet/v4/server/fleet"
@@ -185,7 +184,6 @@ func packageCommand() *cli.Command {
 				EnvVars:     []string{"FLEETCTL_NATIVE_TOOLING"},
 				Destination: &opt.NativeTooling,
 			},
-			eefleetctl.LocalWixDirFlag(&opt.LocalWixDir),
 			&cli.StringFlag{
 				Name:        "macos-devid-pem-content",
 				Usage:       "Dev ID certificate keypair content in PEM format",

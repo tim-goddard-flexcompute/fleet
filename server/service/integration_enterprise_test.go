@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fleetdm/fleet/v4/ee/server/calendar"
 	"github.com/fleetdm/fleet/v4/pkg/optjson"
 	"github.com/fleetdm/fleet/v4/server/config"
 	"github.com/fleetdm/fleet/v4/server/contexts/license"
@@ -8345,7 +8344,7 @@ func (s *integrationEnterpriseTestSuite) TestCalendarEvents() {
 	ctx := context.Background()
 	t := s.T()
 	t.Cleanup(func() {
-		calendar.ClearMockEvents()
+		//calendar.ClearMockEvents()
 	})
 	currentAppCfg, err := s.ds.AppConfig(ctx)
 	require.NoError(t, err)
@@ -8695,7 +8694,7 @@ func (s *integrationEnterpriseTestSuite) TestCalendarEvents() {
 	require.NotZero(t, team1CalendarEvents[0].StartTime)
 	require.NotZero(t, team1CalendarEvents[0].EndTime)
 
-	calendar.SetMockEventsToNow()
+	//calendar.SetMockEventsToNow()
 
 	mysql.ExecAdhocSQL(t, s.ds, func(db sqlx.ExtContext) error {
 		// Update updated_at so the event gets updated (the event is updated every 30 minutes)
@@ -8784,7 +8783,7 @@ func (s *integrationEnterpriseTestSuite) TestCalendarEventsTransferringHosts() {
 	ctx := context.Background()
 	t := s.T()
 	t.Cleanup(func() {
-		calendar.ClearMockEvents()
+		//calendar.ClearMockEvents()
 	})
 	currentAppCfg, err := s.ds.AppConfig(ctx)
 	require.NoError(t, err)

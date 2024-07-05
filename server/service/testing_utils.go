@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/WatchBeam/clock"
-	eeservice "github.com/fleetdm/fleet/v4/ee/server/service"
 	"github.com/fleetdm/fleet/v4/server/config"
 	"github.com/fleetdm/fleet/v4/server/contexts/license"
 	"github.com/fleetdm/fleet/v4/server/datastore/cached_mysql"
@@ -171,33 +170,6 @@ func newTestServiceWithConfig(t *testing.T, ds fleet.Datastore, fleetConfig conf
 	)
 	if err != nil {
 		panic(err)
-	}
-	if lic.IsPremium() {
-		if softwareInstallStore == nil {
-			// default to file-based
-			dir := t.TempDir()
-			store, err := filesystem.NewSoftwareInstallerStore(dir)
-			if err != nil {
-				panic(err)
-			}
-			softwareInstallStore = store
-		}
-		svc, err = eeservice.NewService(
-			svc,
-			ds,
-			kitlog.NewNopLogger(),
-			fleetConfig,
-			mailer,
-			c,
-			depStorage,
-			apple_mdm.NewMDMAppleCommander(mdmStorage, mdmPusher),
-			ssoStore,
-			profMatcher,
-			softwareInstallStore,
-		)
-		if err != nil {
-			panic(err)
-		}
 	}
 	return svc, ctx
 }
