@@ -26,7 +26,6 @@ import (
 	configpkg "github.com/fleetdm/fleet/v4/server/config"
 	"github.com/fleetdm/fleet/v4/server/contexts/ctxerr"
 	licensectx "github.com/fleetdm/fleet/v4/server/contexts/license"
-	"github.com/fleetdm/fleet/v4/server/cron"
 	"github.com/fleetdm/fleet/v4/server/datastore/cached_mysql"
 	"github.com/fleetdm/fleet/v4/server/datastore/filesystem"
 	"github.com/fleetdm/fleet/v4/server/datastore/mysql"
@@ -779,35 +778,11 @@ the way that the Fleet server works.
 				initFatal(err, "failed to register mdm_apple_profile_manager schedule")
 			}
 
-			if license.IsPremium() {
-				if err := cronSchedules.StartCronSchedule(func() (fleet.CronSchedule, error) {
-					commander := apple_mdm.NewMDMAppleCommander(mdmStorage, mdmPushService)
-					return newIPhoneIPadRefetcher(ctx, instanceID, 10*time.Minute, ds, commander, logger)
-				}); err != nil {
-					initFatal(err, "failed to register apple_mdm_iphone_ipad_refetcher schedule")
-				}
-			}
-
 			if license.IsPremium() && config.Activity.EnableAuditLog {
 				if err := cronSchedules.StartCronSchedule(func() (fleet.CronSchedule, error) {
 					return newActivitiesStreamingSchedule(ctx, instanceID, ds, logger, auditLogger)
 				}); err != nil {
 					initFatal(err, "failed to register activities streaming schedule")
-				}
-			}
-
-			if license.IsPremium() {
-				if err := cronSchedules.StartCronSchedule(
-					func() (fleet.CronSchedule, error) {
-						if config.Calendar.Periodicity > 0 {
-							config.Calendar.SetAlwaysReloadEvent(true)
-						} else {
-							config.Calendar.Periodicity = 5 * time.Minute
-						}
-						return cron.NewCalendarSchedule(ctx, instanceID, ds, config.Calendar, logger)
-					},
-				); err != nil {
-					initFatal(err, "failed to register calendar schedule")
 				}
 			}
 
